@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Termo do Amigo Secreto</title>
+
+  <!-- CSS externo -->
+  <link rel="stylesheet" href="custom.css">
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <h1>TERMO DO AMIGO SECRETO</h1>
+      <div>Digite nomes até acertar</div>
+    </header>
+
+  <main>
+    <div class="hint">
+      Digite um nome e pressione Enter.
+      <br>
+      🟩 letra certa no lugar certo · 🟨 letra existe mas está em outro lugar · ⬛ não existe
+    </div>
+
+    <form id="form">
+      <input
+        id="guess"
+        type="text"
+        autocomplete="off"
+        placeholder="Digite um nome..."
+      />
+      <button id="btn" type="submit">Tentar</button>
+    </form>
+
+    <div class="board" id="board"></div>
+    <div class="msg" id="msg"></div>
+  </main>
+
+  <script>
+    /* ======================
+       FUNÇÕES AUXILIARES
+    ====================== */
+    function normalize(text) {
+      return (text || "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function padToLen(text, len) {
+      if (text.length > len) return text.slice(0, len);
+      return text.padEnd(len, " ");
+    }
+
+    /* ======================
+       CONFIGURAÇÃO
+    ====================== */
+    const SECRET_RAW = "Linda Fideles"; 
+    const SECRET = normalize(SECRET_RAW);
+    const MAX_TRIES = 8;
+
+    /* ======================
+       ELEMENTOS
+    ====================== */
+    const form = document.getElementById("form");
+    const input = document.getElementById("guess");
+    const board = document.getElementById("board");
+    const msg = document.getElementById("msg");
+    const btn = document.getElementById("btn");
+
+    let tries = 0;
+    let solved = false;
+
+    /* ======================
+       LÓGICA DO JOGO
+    ====================== */
+    function scoreGuess(guess, secret) {
+      const g = padToLen(guess, secret.length);
+      const result = Array(secret.length).fill("x");
+      const counts = {};
+
+      // Verdes
+      for (let i = 0; i < secret.length; i++) {
+        if (g[i] === secret[i]) {
+          result[i] = "g";
+        } else {
+          counts[secret[i]] = (counts[secret[i]] || 0) + 1;
+        }
+      }
+
+      // Amarelos
+      for (let i = 0; i < secret.length; i++) {
+        if (result[i] === "g") continue;
+        const ch = g[i];
+        if (ch !== " " && counts[ch] > 0) {
+          result[i] = "y";
+          counts[ch]--;
+        }
+      }
+
+      return { letters: g, marks: result };
+    }
+
+    function renderRow(rawGuess, scored) {
+      const row = document.createElement("div");
+      row.className = "row";
+
+      for (let i = 0; i < SECRET.length; i++) {
+        const tile = document.createElement("div");
+        tile.className = `tile ${scored.marks[i]}`;
+        tile.textContent = scored.letters[i].toUpperCase();
+        row.appendChild(tile);
+      }
+
+      board.prepend(row);
+    }
+
+    function endGame(win) {
+      solved = true;
+      input.disabled = true;
+      btn.disabled = true;
+
+      msg.textContent = win
+        ? "🎉 Acertou!"
+        : `😅 Acabaram as tentativas. A resposta era: ${SECRET_RAW.toUpperCase()}`;
+    }
+
+    /* ======================
+       EVENTO PRINCIPAL
+    ====================== */
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (solved) return;
+
+      const raw = input.value;
+      const guess = normalize(raw);
+
+      msg.textContent = "";
+
+      if (!guess) {
+        msg.textContent = "Digite algum nome.";
+        return;
+      }
+
+      tries++;
+
+      const scored = scoreGuess(guess, SECRET);
+      renderRow(raw.trim(), scored);
+
+      input.value = "";
+      input.focus();
+
+      if (guess === SECRET) {
+        endGame(true);
+        return;
+      }
+
+      if (tries >= MAX_TRIES) {
+        endGame(false);
+        return;
+      }
+
+      msg.textContent = `Tentativas restantes: ${MAX_TRIES - tries}`;
+    });
+  </script>
+</body>
+</html>
